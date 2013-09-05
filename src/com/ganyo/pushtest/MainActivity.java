@@ -15,6 +15,8 @@ import android.widget.Toast;
 
 import com.google.android.gcm.GCMRegistrar;
 
+import java.util.Map;
+
 import static com.ganyo.pushtest.Util.*;
 import static com.ganyo.pushtest.Util.TAG;
 
@@ -22,6 +24,7 @@ public class MainActivity extends Activity {
 
   private TextView messageTextView;
   private Button sendButton;
+//  private Button unregisterButton;
   private AlertDialogManager alert = new AlertDialogManager();
 
   @Override
@@ -47,6 +50,13 @@ public class MainActivity extends Activity {
       }
     });
 
+//    unregisterButton = (Button)findViewById(R.id.unregisterButton);
+//    unregisterButton.setOnClickListener(new View.OnClickListener() {
+//      public void onClick(View v) {
+//        AppServices.unregister(v.getContext());
+//      }
+//    });
+//
     registerReceiver(notificationReceiver, new IntentFilter(DISPLAY_MESSAGE_ACTION));
   }
 

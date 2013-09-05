@@ -3,13 +3,15 @@ package com.ganyo.pushtest;
 import android.content.Context;
 
 import android.util.Log;
-import org.usergrid.android.client.Client;
-import org.usergrid.android.client.callbacks.ApiResponseCallback;
-import org.usergrid.android.client.callbacks.DeviceRegistrationCallback;
-import org.usergrid.java.client.entities.Device;
-import org.usergrid.java.client.entities.Entity;
-import org.usergrid.java.client.response.ApiResponse;
-import org.usergrid.java.client.utils.JsonUtils;
+
+import com.apigee.sdk.ApigeeClient;
+import com.apigee.sdk.data.client.DataClient;
+import com.apigee.sdk.data.client.callbacks.ApiResponseCallback;
+import com.apigee.sdk.data.client.callbacks.DeviceRegistrationCallback;
+import com.apigee.sdk.data.client.entities.Device;
+import com.apigee.sdk.data.client.entities.Entity;
+import com.apigee.sdk.data.client.response.ApiResponse;
+import com.apigee.sdk.data.client.utils.JsonUtils;
 
 import java.util.HashMap;
 
@@ -18,15 +20,13 @@ import static com.ganyo.pushtest.Settings.*;
 
 public final class AppServices {
 
-  private static Client client;
+  private static DataClient client;
   private static Device device;
 
-  static synchronized Client getClient() {
+  static synchronized DataClient getClient(Context context) {
     if (client == null) {
-      client = new Client();
-      client.setApiUrl(API_URL);
-      client.setOrganizationId(ORG);
-      client.setApplicationId(APP);
+      ApigeeClient apigeeClient = new ApigeeClient(ORG,APP,API_URL,context);
+      client = apigeeClient.getDataClient();
     }
     return client;
   }
@@ -34,7 +34,7 @@ public final class AppServices {
   static void login(final Context context) {
 
     if (USER != null) {
-      getClient().authorizeAppUserAsync(USER, PASSWORD, new ApiResponseCallback() {
+      getClient(context).authorizeAppUserAsync(USER, PASSWORD, new ApiResponseCallback() {
 
         @Override
         public void onResponse(ApiResponse apiResponse) {
@@ -59,36 +59,37 @@ public final class AppServices {
   static void register(final Context context, final String regId) {
     Log.i(TAG, "registering device: " + regId);
 
-    getClient().registerDeviceForPushAsync(context, NOTIFIER, regId, null, new DeviceRegistrationCallback() {
+    getClient(context).registerDeviceForPushAsync(context, NOTIFIER, regId, null, new DeviceRegistrationCallback() {
 
       @Override
       public void onResponse(Device device) {
-        Log.i(TAG, "register response: " + device);
+//        Log.i(TAG, "register response: " + device);
         AppServices.device = device;
         displayMessage(context, "Device registered as: " + regId);
+        DataClient dataClient = getClient(context);
 
         // connect Device to current User - if there is one
-        if (getClient().getLoggedInUser() != null) {
-          getClient().connectEntitiesAsync("users", getClient().getLoggedInUser().getUuid().toString(),
-                                           "devices", device.getUuid().toString(),
-                                           new ApiResponseCallback() {
-            @Override
-            public void onResponse(ApiResponse apiResponse) {
-              Log.i(TAG, "connect response: " + apiResponse);
-            }
+        if (dataClient.getLoggedInUser() != null) {
+          dataClient.connectEntitiesAsync("users", dataClient.getLoggedInUser().getUuid().toString(),
+              "devices", device.getUuid().toString(),
+              new ApiResponseCallback() {
+                @Override
+                public void onResponse(ApiResponse apiResponse) {
+                  Log.i(TAG, "connect response: " + apiResponse);
+                }
 
-            @Override
-            public void onException(Exception e) {
-              displayMessage(context, "Connect Exception: " + e);
-              Log.i(TAG, "connect exception: " + e);
-            }
-          });
+                @Override
+                public void onException(Exception e) {
+                  displayMessage(context, "Connect Exception: " + e);
+                  Log.i(TAG, "connect exception: " + e);
+                }
+              });
         }
       }
 
       @Override
       public void onException(Exception e) {
-    	displayMessage(context, "Register Exception: " + e);
+        displayMessage(context, "Register Exception: " + e);
         Log.i(TAG, "register exception: " + e);
       }
 
@@ -102,13 +103,14 @@ public final class AppServices {
       displayMessage(context, "Device not registered (yet?)");
     }
     else {
+      DataClient dataClient = getClient(context);
       String entityPath = "devices/" + device.getUuid().toString() + "/notifications";
-      Entity notification = new Entity(entityPath);
+      Entity notification = new Entity(dataClient,entityPath);
 
       HashMap<String,String> payloads = new HashMap<String, String>();
       payloads.put("google", "Hi there!");
       notification.setProperty("payloads", JsonUtils.toJsonNode(payloads));
-      getClient().createEntityAsync(notification, new ApiResponseCallback() {
+      dataClient.createEntityAsync(notification, new ApiResponseCallback() {
 
         @Override
         public void onResponse(ApiResponse apiResponse) {

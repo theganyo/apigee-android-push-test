@@ -10,4 +10,5 @@
     <string name="gcm_unregistered">Device Unregistered: (%1$s).</string>
     <string name="gcm_alert_title">Message</string>
     <string name="gcm_message">Message: (%1$s)</string>
+    <string name="unregister">Unregister Device</string>
 </resources>
